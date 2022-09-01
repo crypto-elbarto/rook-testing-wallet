@@ -1,1 +1,4 @@
 transpose-data
+plotly
+pandas
+streamlit
