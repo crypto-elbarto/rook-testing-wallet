@@ -2,15 +2,24 @@ import streamlit as st
 import pandas as pd
 from transpose import Transpose
 import requests
+from datetime import datetime, timezone, date
 import os
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import plotly.express as px
 from dotenv import load_dotenv
+from st_aggrid import AgGrid
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+
+st.set_page_config(page_title = "Rook Stablecoin Testing Wallet", layout="wide")
+
+
 
 #------------------------------------------------------#
 #Write the necessary functions
+@st.cache
 def get_rook_reward():
-    url = "https://api.rook.fi/api/v1/coordinator/userClaims?user=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE"
+    url = "https://api.rook.finance/api/v1/coordinator/userClaims?user=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE"
     response = (requests.get(url).json())
     earning_to_date = (response['latestCommitment']['earningsToDate'])/pow(10,18)
     total_claimed = (response['totalClaimed'])/pow(10,18)
@@ -43,12 +52,13 @@ api=Transpose(TRANSPOSE_API_KEY)
 #use transpose API to pull the data
 token_metadata = pd.json_normalize(api.token.tokens_by_contract_address([contract_address_usdc, contract_address_dai, contract_address_frax, contract_address_usdt, contract_address_weth, contract_address_rook]).to_dict())[['contract_address', 'name', 'symbol', 'decimals']] 
 wallet_balances = pd.json_normalize(api.token.tokens_by_owner(testing_wallet).to_dict())
+@st.cache
 def token_amount(df):
     try:
         return df['balance']/pow(10, df['decimals'])
     except:
         return df['quantity']/pow(10, df['decimals'])
-    
+@st.cache  
 def create_trade_path(df):
     return f"{df['symbol_x']}-->{df['symbol_y']}"
 token_transfers_all = pd.json_normalize(api.token.transfers_by_account(testing_wallet, limit=500).to_dict()).merge(token_metadata, how='left', left_on='contract_address', right_on='contract_address').assign(token_amount = lambda x: token_amount(x))
@@ -60,26 +70,52 @@ token_transfer_to = token_transfers[token_transfers['receiver']=='Testing Wallet
 token_sent = token_transfer_from.merge(token_transfer_to, how='left', left_on=['tx_hash'], right_on=['tx_hash'])[['tx_hash', 'timestamp_x', 'token_contract_address_x', 'symbol_x', 'token_amount_x', 'sender_x', 'receiver_x', 'token_contract_address_y', 'symbol_y', 'token_amount_y']].dropna(subset=['token_contract_address_y'])
 token_sent['path'] = token_sent.apply(create_trade_path, axis=1)
 token_sent['token_amount_x']=token_sent['token_amount_x'].astype('float64')
+token_sent['date']=pd.to_datetime(token_sent['timestamp_x']).dt.date
+token_sent['key']=1
 
+token_sent['date']=token_sent['date'].astype('datetime64')
 scam_coins = wallet_balances[wallet_balances['contract_address'] == '0x1f068a896560632a4d2E05044BD7F03834f1A465'].index
 bal = wallet_balances.drop(scam_coins).assign(amount = lambda x: token_amount(x))
 #--------------------------------------------------------------------------------------------#
 
+#-------------------------------------
+#-------------------------------------Create df with daily values
+date_range = pd.date_range(pd.to_datetime(token_sent['timestamp_x']).dt.date.min(), date.today(), inclusive="both").to_frame(index=False)
+date_range.columns = ['date']
+date_range['key']=1
+
+tokens=pd.DataFrame(token_sent['symbol_x'].unique())
+token_paths = pd.DataFrame(token_sent[['symbol_x', 'path']])
+tokens['key']=1
+token_paths['key']=1
+token_paths=token_paths.groupby(['symbol_x', 'path'])['key'].mean().reset_index() 
+
+daily_tokens = date_range.merge(tokens, how='left', on='key')
+daily_tokens = daily_tokens.merge(token_paths, how= 'left', left_on=['key', 0], right_on=['key', 'symbol_x']).drop(['key', 0], axis=1)
+
+token_sent_sum = token_sent.groupby(['date', 'symbol_x', 'path'])['token_amount_x'].sum().reset_index().sort_values('date')
+token_sent_sum=daily_tokens.merge(token_sent_sum, how='left', left_on=['date', 'symbol_x', 'path'], right_on=['date', 'symbol_x', 'path']).fillna(0)
+token_sent_sum['cumsum'] = token_sent_sum.groupby(['symbol_x', 'path'])['token_amount_x'].cumsum()
+token_sent_sum=token_sent_sum[token_sent_sum['cumsum']>0].sort_values(['date', 'symbol_x', 'path'])
+
+# st.dataframe(token_sent_sum)
 
 
-
-st.set_page_config(layout="wide")
 st.title("Rook Multisig Testing Wallet")
 st.write("Learn More: [KIP-30](https://forum.rook.fi/t/kip-30-temporarily-empower-and-fund-a-strategy-testing-multisig/395)")
 
 
-
+#-------------------------------------------------------------------------#
+# Show the amount of Rook that has been earned using columns
 rook_earned_col, rook_claimed_col, rook_claimable_col,  = st.columns(spec=3, gap="medium")
 
 st.header("Current Balances")
 
 stablecol_1, stablecol_2, stablecol_3, stablecol_4 = st.columns(spec=4, gap="small")
 
+
+#-----------------------------------------------------------------------------------#
+#------------------Create Pie Charts for Showing Wallet Balances--------------------#
 labels = ["USDC", "USDT", "DAI", "FRAX"]
 wallet_balances = [f"{float(bal[bal['name'] == 'USD Coin']['amount']):.0f}",f"{float(bal[bal['name'] == 'Tether USD']['amount']):.0f}", f"{float(bal[bal['name'] == 'Dai Stablecoin']['amount']):.0f}", f"{float(bal[bal['name'] == 'Frax']['amount']):.0f}"]
 stablecoin_volume = [token_sent[token_sent['symbol_x']=='USDC']['token_amount_x'].sum(), token_sent[token_sent['symbol_x']=='USDT']['token_amount_x'].sum(), token_sent[token_sent['symbol_x']=='DAI']['token_amount_x'].sum(), token_sent[token_sent['symbol_x']=='FRAX']['token_amount_x'].sum()]
@@ -90,7 +126,7 @@ fig.add_trace(go.Pie(labels=labels, values=wallet_balances, name="Stablecoin Bal
 fig.add_trace(go.Pie(labels=labels, values=stablecoin_volume, name="Trading Volume"),
               1, 2)
 # Use `hole` to create a donut-like pie chart
-fig.update_traces(hole=.4, hoverinfo="label+percent+value")
+fig.update_traces(text=labels, hole=.4, hoverinfo="label+percent+value")
 fig.update_layout(
     title_text="Current Wallet Testing Wallet Balances & Volume",
     # Add annotations in the center of the donut pies.
@@ -100,25 +136,29 @@ fig.update_layout(
     width=900,
     height=650,)
 st.plotly_chart(fig,use_container_width=True)
+#----------------------------------------------------------------------------------------#
 
 
+#----------------------------------------------------------------------------
+#----------------------------Create stacked area chart of volume-----------
+
+
+fig= px.area(token_sent_sum, 'date', 'cumsum', color='path', line_group = 'symbol_x')
+st.plotly_chart(fig, use_container_width=True)
+
+
+#-----------------------------------------------------------------------------
 stable_vol_1, stable_vol_2, stable_vol_3, stable_vol_4 = st.columns(spec=4, gap="small")
 rook_reward=get_rook_reward()
 
-
-
-
-# with st.expander("Current Balances"):
-
-
-
-
-
-trading_details_expander = st.expander("Trading Details")
+trading_details_expander = st.expander("Trading Details", expanded=True)
 # st.line_chart()
 # st.table(token_sent[(token_sent['symbol_x']=='USDC') | (token_sent['symbol_y']=='USDC')][['timestamp_x', 'path', 'token_amount_x']].sort_values(by='timestamp_x',ascending=False))
 token_sent['cumsum']=token_sent.groupby(['timestamp_x', 'path'])['token_amount_x'].cumsum()
-st.dataframe(token_sent[['timestamp_x', 'path', 'token_amount_x', 'cumsum']])
+
+
+
+# st.dataframe(token_sent[['timestamp_x', 'path', 'token_amount_x', 'cumsum']])
 with rook_earned_col:
     st.metric(label="Total $ROOK Earned", value=f"{rook_reward[0]:.2f} $ROOK")
 with rook_claimed_col:
@@ -135,7 +175,7 @@ with stablecol_1:
     usdc_balance = float(bal[bal['name'] == 'USD Coin']['amount'])
 
     change = (usdc_balance-150000)/150000
-
+    
     st.metric(label="USDC Balance", value = f"${usdc_balance:,.2f}", delta =f"{change:.2%}")
 
 
@@ -169,7 +209,9 @@ with stablecol_3:
 with stable_vol_3:
     total_usdt_volume = token_sent[token_sent['symbol_x']=='USDT']['token_amount_x'].sum()
     st.metric(label="USDT Volume", value=f"${total_usdt_volume:,.0f}")
-    st.dataframe(token_sent[(token_sent['symbol_x']=='USDT') | (token_sent['symbol_y']=='USDT')][['timestamp_x', 'path', 'token_amount_x']].sort_values(by='timestamp_x', ascending=False))
+    usdt_df = token_sent[(token_sent['symbol_x']=='USDT') | (token_sent['symbol_y']=='USDT')][['timestamp_x', 'path', 'token_amount_x']].sort_values(by='timestamp_x', ascending=False)
+    
+    st.dataframe(usdt_df.style.format(precision=0, formatter={'token_amount_x':"${:,.0f}"}))
 
 with stablecol_4:
     st.subheader("FRAX")
@@ -180,22 +222,92 @@ with stablecol_4:
 with stable_vol_4:
     total_frax_volume = token_sent[token_sent['symbol_x']=='FRAX']['token_amount_x'].sum()
     st.metric(label="FRAX Volume", value=f"${total_frax_volume:,.0f}")
-    st.dataframe(token_sent[(token_sent['symbol_x']=='FRAX') | (token_sent['symbol_y']=='FRAX')][['timestamp_x', 'path', 'token_amount_x']].sort_values(by='timestamp_x', ascending=False))
+    frax_df = token_sent[(token_sent['symbol_x']=='FRAX') | (token_sent['symbol_y']=='FRAX')][['timestamp_x', 'path', 'token_amount_x']].sort_values(by='timestamp_x', ascending=False)
+    # pd.set_option('display.float_format', '${:,}'.format)
+    # style = frax_df.style.apply(lambda x: "${x:,.0f}".format)
+    st.dataframe(frax_df.style.format(precision=0, formatter={'token_amount_x':"${:,.0f}"}))
+
+trading_df = token_sent[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path', 'token_amount_x']].sort_values('timestamp_x', ascending=True).copy()
+trading_df['cumsum'] = trading_df.groupby(['symbol_x'])['token_amount_x'].cumsum()
+trading_df.rename(columns={'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Token Total'}, inplace=True)
+# trading_df.columns=['Transaction Hash', 'Timestamp', 'Trade Path', 'USD Value','Path Total USD Volume']
+trading_df.sort_values('Timestamp', ascending=False, inplace=True)
+# trading_df['Timestamp'] =pd.to_datetime(trading_df['Timestamp'])
+# trading_df.loc[:, 'Timestamp'] = pd.to_datetime(trading_df['Timestamp']).dt.strftime('%Y-%m-%d %X')
+# trading_df.loc[:, 'USD Value'] = trading_df['USD Value'].map('${:,.0f}'.format)
+# trading_df.loc[:, 'Path Total USD Volume'] = trading_df['Path Total USD Volume'].map('${:,.0f}'.format)
+
+trading_df['Timestamp'] = pd.to_datetime(trading_df['Timestamp'])
+fig1 = px.scatter(trading_df, x="Timestamp", y="USD Value", color = "symbol_x", size = 'Token Total')
+fig2 = px.bar(trading_df, x="Timestamp", y='USD Value', color='Trade Path')
+fig3 = go.Figure(data=fig1.data + fig2.data)
+# st.dataframe(trading_df)
+# st.plotly_chart(fig3, use_container_width=True)
 
 
 
+
+# st.plotly_cahrt(token_sent_sum, )
 with trading_details_expander:
+    
+    filter_radio = st.radio('Filter By Stablecoin or Trade Pair', options=['None', 'Stablecoin', 'Trade Path'])
     cum_sum = token_sent.groupby(['timestamp_x', 'path'])['token_amount_x'].cumsum()
-    st.dataframe(cum_sum)
-    stable_details_col1, stable_details_col2, stable_details_col3, stable_details_col4 = st.columns(spec=4, gap="medium")
+    style_format_dict = {'USD Value': "${:,.0f}", 'Path Total USD Volume':"${:,.0f}"}
+    
+    filtered_trading_df = trading_df.copy()
+    filtered_trading_df.rename(columns={'symbol_x':'Token Sold', 'symbol_y': 'Token Purchased'}, inplace=True)
 
-with stable_details_col1:
-    st.write("USDC")
-    st.metric(label="# of Trade", value=50)
+    current_time = datetime.now(timezone.utc)
+    last_trade = trading_df.iloc[0]['Timestamp']
+    col1, col2, col3 = st.columns((2,2,6), gap='medium')
+    difference = str(current_time - last_trade).split('.')
+    
+    # st.metric(label='Time Since Last Trade', value = f"{difference[0]} {difference[1]}:{difference[3]}")
 
-with stable_details_col2:
-    st.write("DAI")
-    st.metric(label="# of Trade", value=50)
+    gb = GridOptionsBuilder.from_dataframe(trading_df)
+    gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=20)
+    gb.configure_column('USD Value', type = ["numericColumn", "numberColumnFilter", "customNumericFormat"], 
+                        precision=0,
+                        valueFormatter="data.'USD Value'.toLocaleString('en-US');")
+                        # ={'USD Value':"${:,.0f}"})
+    gb.configure_auto_height(autoHeight=False)
+    # gb.configure_column('USD Value', other_column_properties={'value': })
+    # gb.configure_column('USD Value', type=["currency"], custom_format_string ="${:,.0f}")
+    gridOptions = gb.build()        
+    
+    
+    # trading_df = trading_df.rename(columns = {'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Path Total USD Volume'})
+    if filter_radio == 'Stablecoin':
+        filter= st.radio('Select Token:', ['USDC', 'USDT', 'DAI', 'FRAX'])
+        filtered_trading_df = trading_df[trading_df['symbol_x']==filter]
+    elif filter_radio == 'Trade Path':
+        filter= st.selectbox('Select Trade Pair from menu', set(trading_df['Trade Path'].tolist()))
+        filtered_trading_df = trading_df[trading_df['Trade Path']==filter]
+    else:
+        filtered_trading_df = trading_df
+        
+    with col1: st.metric(label='Last Trade', value = filtered_trading_df.iloc[0]['Timestamp'].strftime('%Y-%m-%d %H:%M:%S'))
+    with col2: st.metric(label='Time Since Last Trade', value = difference[0])
+    
+    # filtered_trading_df.rename(columns={'symbol_x':'Token Sold', 'symbol_y': 'Token Purchased'}, inplace=True)
+    # ftd = filtered_trading_df.style.format(precision=0, formatter={'USD Value':"${:,.0f}",
+    #                                                                'Token Total':"${:,.0f}"})
+    # dtf = trading_df.style.format(precision=0, formatter={'USD Value':"${:,.0f}",
+                                                                #    'Token Total':"${:,.0f}"})
+    # frax_df.style.format(precision=0, formatter={'token_amount_x':"${:,.0f}"}))
+    AgGrid(filtered_trading_df, gridOptions=gridOptions, height=500, width='100%', fit_columns_on_grid_load=True)
+    
+    @st.cache
+    def convert_df(df):
+        return df.to_csv()
+    csv = convert_df(trading_df)
+    
+    st.download_button(label='Download All Trades',
+                       data=csv,
+                       )
+
+
+
 
 
 with st.sidebar:
