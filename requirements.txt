@@ -1,5 +1,5 @@
 transpose-data==2.0.4
 plotly==5.9.0
-pandas==pandas 1.4.4
+pandas==1.4.4
 streamlit==1.12.2
 streamlit-aggrid==0.3.3
