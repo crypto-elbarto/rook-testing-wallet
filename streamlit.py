@@ -55,7 +55,7 @@ api=Transpose(TRANSPOSE_API_KEY)
 token_metadata=pd.DataFrame()
 contract_list = [contract_address_usdc, contract_address_dai, contract_address_frax, contract_address_usdt, contract_address_weth, contract_address_rook]
 for contract in contract_list:
-    temp_metadata = pd.json_normalize(api.token.tokens_by_contract_address().to_dict())[['contract_address', 'name', 'symbol', 'decimals']]
+    temp_metadata = pd.json_normalize(api.token.tokens_by_contract_address(contract).to_dict())[['contract_address', 'name', 'symbol', 'decimals']]
     token_metadata =  pd.concat([token_metadata, temp_metadata], axis=0)
 time.sleep(3)
 wallet_balances = pd.json_normalize(api.token.tokens_by_owner(testing_wallet).to_dict())
