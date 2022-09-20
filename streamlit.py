@@ -55,7 +55,11 @@ api=Transpose(TRANSPOSE_API_KEY)
 token_metadata=pd.DataFrame()
 contract_list = [contract_address_usdc, contract_address_dai, contract_address_frax, contract_address_usdt, contract_address_weth, contract_address_rook]
 for contract in contract_list:
-    temp_metadata = pd.json_normalize(api.token.tokens_by_contract_address(contract).to_dict())[['contract_address', 'name', 'symbol', 'decimals']]
+    temp_list = []
+    temp_metadata = api.bulk_request(api.token.tokens_by_contract_address(contract), requests_per_second=0.33)
+    for tmp in temp_metadata:
+        temp_list.append(tmp.to_dict())
+    temp_metadata = pd.json_normalize(temp_list)[['contract_address', 'name', 'symbol', 'decimals']]
     token_metadata =  pd.concat([token_metadata, temp_metadata], axis=0)
     time.sleep(1)
 wallet_balances = pd.json_normalize(api.token.tokens_by_owner(testing_wallet).to_dict())
@@ -72,7 +76,7 @@ def create_trade_path(df):
 
 
 # token_transfers_all = api.bulk_request(api.token.transfers_by_account(testing_wallet, limit=500))  ##Get the token transfers using bulk request
-token_transfers_all = api.bulk_request(api.token.transfers_by_account(testing_wallet, limit=500))
+token_transfers_all = api.bulk_request(api.token.transfers_by_account(testing_wallet, limit=500), requests_per_second=0.33)
 transfers_list =[]
 for tt in token_transfers_all:
     transfers_list.append(tt.to_dict())
