@@ -57,20 +57,44 @@ contract_list = [contract_address_usdc, contract_address_dai, contract_address_f
 for contract in contract_list:
     temp_metadata = pd.json_normalize(api.token.tokens_by_contract_address(contract).to_dict())[['contract_address', 'name', 'symbol', 'decimals']]
     token_metadata =  pd.concat([token_metadata, temp_metadata], axis=0)
-time.sleep(3)
+    time.sleep(1)
 wallet_balances = pd.json_normalize(api.token.tokens_by_owner(testing_wallet).to_dict())
-@st.cache
+time.sleep(1)
+
 def token_amount(df):
     try:
         return df['balance']/pow(10, df['decimals'])
     except:
         return df['quantity']/pow(10, df['decimals'])
-@st.cache  
+
 def create_trade_path(df):
     return f"{df['symbol_x']}-->{df['symbol_y']}"
-token_transfers_all = pd.json_normalize(api.token.transfers_by_account(testing_wallet, limit=500).to_dict()).merge(token_metadata, how='left', left_on='contract_address', right_on='contract_address').assign(token_amount = lambda x: token_amount(x))
+
+
+# token_transfers_all = api.bulk_request(api.token.transfers_by_account(testing_wallet, limit=500))  ##Get the token transfers using bulk request
+token_transfers_all = api.bulk_request(api.token.transfers_by_account(testing_wallet, limit=500))
+transfers_list =[]
+for tt in token_transfers_all:
+    transfers_list.append(tt.to_dict())
+df_token_transfers_all= pd.json_normalize(transfers_list)     #transform into df from dictionary
+# print('###--------------------------------------------------------###')
+# print('###--------------------------------------------------------###')
+
+# print(token_transfers_all)
+
+# print('###--------------------------------------------------------###')
+# print('###--------------------------------------------------------###')
+
+
+
+
+
+
+                                        
+df_token_transfers_all_w_metadata = df_token_transfers_all.merge(token_metadata, how='left', left_on='contract_address', right_on='contract_address').assign(token_amount = lambda x: token_amount(x))
+
 names_dict = {'0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE':'Testing Wallet'}
-token_transfers = token_transfers_all[['transaction_hash', 'timestamp', 'contract_address','symbol', 'token_amount', 'from', 'to']].rename(columns={'transaction_hash':'tx_hash', 'contract_address':'token_contract_address', 'from':'sender', 'to':'receiver'}).replace({'sender': names_dict, 'receiver':names_dict}).sort_values('timestamp', ascending=False)
+token_transfers = df_token_transfers_all_w_metadata[['transaction_hash', 'timestamp', 'contract_address','symbol', 'token_amount', 'from', 'to']].rename(columns={'transaction_hash':'tx_hash', 'contract_address':'token_contract_address', 'from':'sender', 'to':'receiver'}).replace({'sender': names_dict, 'receiver':names_dict}).sort_values('timestamp', ascending=False)
 
 token_transfer_from = token_transfers[token_transfers['sender']=='Testing Wallet']
 token_transfer_to = token_transfers[token_transfers['receiver']=='Testing Wallet']
@@ -234,7 +258,8 @@ with stable_vol_4:
     # style = frax_df.style.apply(lambda x: "${x:,.0f}".format)
     st.dataframe(frax_df.style.format(precision=0, formatter={'token_amount_x':"${:,.0f}"}))
 
-trading_df = token_sent[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path', 'token_amount_x']].sort_values('timestamp_x', ascending=True).copy()
+trading_df=token_sent.copy()
+trading_df = trading_df[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path', 'token_amount_x']].sort_values('timestamp_x', ascending=True)
 trading_df['cumsum'] = trading_df.groupby(['symbol_x'])['token_amount_x'].cumsum()
 trading_df.rename(columns={'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Token Total'}, inplace=True)
 # trading_df.columns=['Transaction Hash', 'Timestamp', 'Trade Path', 'USD Value','Path Total USD Volume']
