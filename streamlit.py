@@ -10,6 +10,7 @@ import plotly.express as px
 from dotenv import load_dotenv
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
+from time import sleep, time
 
 st.set_page_config(page_title = "Rook Stablecoin Testing Wallet", layout="wide")
 
@@ -49,8 +50,14 @@ load_dotenv()
 TRANSPOSE_API_KEY = os.environ.get('TRANSPOSE_API_KEY')
 api=Transpose(TRANSPOSE_API_KEY)
 
+
 #use transpose API to pull the data
-token_metadata = pd.json_normalize(api.token.tokens_by_contract_address([contract_address_usdc, contract_address_dai, contract_address_frax, contract_address_usdt, contract_address_weth, contract_address_rook]).to_dict())[['contract_address', 'name', 'symbol', 'decimals']] 
+token_metadata=pd.DataFrame()
+contract_list = [contract_address_usdc, contract_address_dai, contract_address_frax, contract_address_usdt, contract_address_weth, contract_address_rook]
+for contract in contract_list:
+    temp_metadata = pd.json_normalize(api.token.tokens_by_contract_address().to_dict())[['contract_address', 'name', 'symbol', 'decimals']]
+    token_metadata =  pd.concat([token_metadata, temp_metadata], axis=0)
+time.sleep(3)
 wallet_balances = pd.json_normalize(api.token.tokens_by_owner(testing_wallet).to_dict())
 @st.cache
 def token_amount(df):
@@ -279,7 +286,9 @@ with trading_details_expander:
     # trading_df = trading_df.rename(columns = {'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Path Total USD Volume'})
     if filter_radio == 'Stablecoin':
         filter= st.radio('Select Token:', ['USDC', 'USDT', 'DAI', 'FRAX'])
-        filtered_trading_df = trading_df[trading_df['symbol_x']==filter]
+        filter_mask = trading_df['symbol_x']==filter
+        
+        filtered_trading_df = trading_df[filter_mask]
     elif filter_radio == 'Trade Path':
         filter= st.selectbox('Select Trade Pair from menu', set(trading_df['Trade Path'].tolist()))
         filtered_trading_df = trading_df[trading_df['Trade Path']==filter]
