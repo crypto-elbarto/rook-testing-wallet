@@ -10,7 +10,7 @@ import plotly.express as px
 from dotenv import load_dotenv
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
-from time import sleep, time
+import time
 
 st.set_page_config(page_title = "Rook Stablecoin Testing Wallet", layout="wide")
 
