@@ -276,8 +276,12 @@ rebate_df = json_normalize(parsed['items'])
 rebate_df = rebate_df[['txHash','userRookRebate','rookPrice']]
 
 trading_df = trading_df.merge(rebate_df,how='left',left_on='tx_hash',right_on='txHash')
+trading_df['Amount Earned'] = trading_df['rookPrice']*trading_df['userRookRebate']
+
 
 trading_df.rename(columns={'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Token Total'}, inplace=True)
+trading_df = trading_df[['Transaction Hash','Timestamp', 'Trade Path', 'USD Value', 'Token Total','Amount Earned','userRookRebate']]
+
 # trading_df.columns=['Transaction Hash', 'Timestamp', 'Trade Path', 'USD Value','Path Total USD Volume']
 trading_df.sort_values('Timestamp', ascending=False, inplace=True)
 # trading_df['Timestamp'] =pd.to_datetime(trading_df['Timestamp'])
