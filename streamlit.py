@@ -185,16 +185,10 @@ st.plotly_chart(fig,use_container_width=True)
 fig= px.area(token_sent_sum, 'date', 'cumsum', color='path', line_group = 'symbol_x')
 st.plotly_chart(fig, use_container_width=True)
 
-#-----------------------------------------------------------------------------
 
-cumulative_volume = st.columns(spec=1)
-
-with cumulative_volume:
-    total_volume = token_sent['token_amount_x'].sum()
-    st.metric(label="Total Volume", value=f"${total_volume:,.0f}")
 
 #-----------------------------------------------------------------------------
-stable_vol_1, stable_vol_2, stable_vol_3, stable_vol_4 = st.columns(spec=4, gap="small")
+cumulative_volume, stable_vol_1, stable_vol_2, stable_vol_3, stable_vol_4 = st.columns(spec=5, gap="small")
 rook_reward=get_rook_reward()
 
 trading_details_expander = st.expander("Trading Details", expanded=True)
@@ -211,6 +205,10 @@ with rook_claimed_col:
     st.metric(label="Total $ROOK Claimed", value=f"{rook_reward[1]:.2f} $ROOK")
 with rook_claimable_col:
     st.metric(label="Claimable $ROOK", value=f"{rook_reward[2]:.2f} $ROOK")
+
+with cumulative_volume:
+    total_volume = token_sent['token_amount_x'].sum()
+    st.metric(label="Total Volume", value=f"${total_volume:,.0f}")    
 
 with stablecol_1:
     st.subheader("USDC")
