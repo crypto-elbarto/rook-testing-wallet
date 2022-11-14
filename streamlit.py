@@ -146,7 +146,7 @@ st.write("Learn More: [KIP-30](https://forum.rook.fi/t/kip-30-temporarily-empowe
 
 #-------------------------------------------------------------------------#
 # Show the amount of Rook that has been earned using columns
-rook_earned_col, rook_claimed_col, rook_claimable_col,  = st.columns(spec=3, gap="medium")
+rook_earned_col, rook_claimed_col, rook_claimable_col,cumulative_volume  = st.columns(spec=4, gap="small")
 
 st.header("Current Balances")
 
@@ -188,7 +188,7 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 #-----------------------------------------------------------------------------
-cumulative_volume, stable_vol_1, stable_vol_2, stable_vol_3, stable_vol_4 = st.columns(spec=5, gap="small")
+stable_vol_1, stable_vol_2, stable_vol_3, stable_vol_4 = st.columns(spec=4, gap="small")
 rook_reward=get_rook_reward()
 
 trading_details_expander = st.expander("Trading Details", expanded=True)
