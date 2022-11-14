@@ -269,13 +269,17 @@ trading_df=token_sent.copy()
 trading_df = trading_df[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path', 'token_amount_x']].sort_values('timestamp_x', ascending=True)
 trading_df['cumsum'] = trading_df.groupby(['symbol_x'])['token_amount_x'].cumsum()
 
-rebate_url = "https://api.rook.finance/api/v1/trade/fills?makerAddresses=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE&page=1&size=50"
-response = requests.get(rebate_url)
-parsed = json.loads(response.content)
-rebate_df = json_normalize(parsed['items'])
-rebate_df = rebate_df[['txHash','userRookRebate','rookPrice']]
+rebate_comb = pd.DataFrame(columns=['txHash','userRookRebate','rookPrice'])
+for i in range(1,int(np.round(trading_df.shape[0]/100))+1):
+    rebate_url = "https://api.rook.finance/api/v1/trade/fills?makerAddresses=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE&page="+str(i)+"&size=100"
+    response = requests.get(rebate_url)
+    parsed = json.loads(response.content)
+    rebate_df = json_normalize(parsed['items'])
+    rebate_df = rebate_df[['txHash','userRookRebate','rookPrice']]
+    rebate_comb = rebate_comb.append(rebate_df)
 
-trading_df = trading_df.merge(rebate_df,how='left',left_on='tx_hash',right_on='txHash')
+
+trading_df = trading_df.merge(rebate_comb,how='left',left_on='tx_hash',right_on='txHash')
 trading_df['Amount Earned'] = trading_df['rookPrice']*trading_df['userRookRebate']
 
 
