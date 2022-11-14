@@ -280,12 +280,7 @@ for i in range(1,int(np.round(trading_df.shape[0]/100))+1):
     rebate_comb = rebate_comb.append(rebate_df)
 
 
-trading_df = trading_df.merge(rebate_comb,how='left',left_on='tx_hash',right_on='txHash')
-trading_df['Amount Earned'] = trading_df['rookPrice']*trading_df['userRookRebate']
-
-
 trading_df.rename(columns={'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Token Total'}, inplace=True)
-trading_df = trading_df[['Transaction Hash','Timestamp', 'Trade Path', 'USD Value', 'Token Total','Amount Earned','userRookRebate']]
 
 # trading_df.columns=['Transaction Hash', 'Timestamp', 'Trade Path', 'USD Value','Path Total USD Volume']
 trading_df.sort_values('Timestamp', ascending=False, inplace=True)
@@ -298,6 +293,10 @@ trading_df['Timestamp'] = pd.to_datetime(trading_df['Timestamp'])
 fig1 = px.scatter(trading_df, x="Timestamp", y="USD Value", color = "symbol_x", size = 'Token Total')
 fig2 = px.bar(trading_df, x="Timestamp", y='USD Value', color='Trade Path')
 fig3 = go.Figure(data=fig1.data + fig2.data)
+trading_df = trading_df.merge(rebate_comb,how='left',left_on='tx_hash',right_on='txHash')
+trading_df['Amount Earned'] = trading_df['rookPrice']*trading_df['userRookRebate']
+trading_df = trading_df[['Transaction Hash','Timestamp', 'Trade Path', 'USD Value', 'Token Total','Amount Earned','userRookRebate']]
+
 # st.dataframe(trading_df)
 # st.plotly_chart(fig3, use_container_width=True)
 
