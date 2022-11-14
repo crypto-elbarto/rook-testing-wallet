@@ -12,6 +12,9 @@ from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 import time
 
+from pandas.io.json import json_normalize
+import json
+
 st.set_page_config(page_title = "Rook Stablecoin Testing Wallet", layout="wide")
 
 
