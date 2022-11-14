@@ -278,7 +278,7 @@ trading_df = trading_df[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path'
 trading_df['cumsum'] = trading_df.groupby(['symbol_x'])['token_amount_x'].cumsum()
 
 rebate_comb = pd.DataFrame(columns=['txHash','userRookRebate','rookPrice'])
-for i in range(1,int(np.round(trading_df.shape[0]/100))+1):
+for i in range(1,int(np.round(token_sent.shape[0]/100))+1):
     rebate_url = "https://api.rook.finance/api/v1/trade/fills?makerAddresses=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE&page="+str(i)+"&size=100"
     response = requests.get(rebate_url)
     parsed = json.loads(response.content)
