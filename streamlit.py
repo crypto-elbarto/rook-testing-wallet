@@ -301,9 +301,11 @@ fig1 = px.scatter(trading_df, x="Timestamp", y="USD Value", color = "symbol_x", 
 fig2 = px.bar(trading_df, x="Timestamp", y='USD Value', color='Trade Path')
 fig3 = go.Figure(data=fig1.data + fig2.data)
 trading_df = trading_df.merge(rebate_comb,how='left',left_on='Transaction Hash',right_on='txHash')
-trading_df['Amount Earned'] = trading_df['rookPrice']*trading_df['userRookRebate']
-trading_df = trading_df[['Transaction Hash','Timestamp', 'Trade Path', 'USD Value', 'Token Total','Amount Earned','userRookRebate']]
+trading_df['Rebate $ Earned'] = trading_df['rookPrice']*trading_df['userRookRebate']
+trading_df = trading_df[['Transaction Hash','Timestamp', 'Trade Path', 'USD Value', 'Token Total','Rebate $ Earned','userRookRebate']]
 
+
+trading_df.rename(columns={'userRookRebate':'Rook Rebate Earned'}, inplace=True)
 # st.dataframe(trading_df)
 # st.plotly_chart(fig3, use_container_width=True)
 
