@@ -185,6 +185,13 @@ st.plotly_chart(fig,use_container_width=True)
 fig= px.area(token_sent_sum, 'date', 'cumsum', color='path', line_group = 'symbol_x')
 st.plotly_chart(fig, use_container_width=True)
 
+#-----------------------------------------------------------------------------
+
+cumulative_volume = st.columns(spec=1)
+
+with cumulative_volume:
+    total_volume = token_sent['token_amount_x'].sum()
+    st.metric(label="Total Volume", value=f"${total_volume:,.0f}")
 
 #-----------------------------------------------------------------------------
 stable_vol_1, stable_vol_2, stable_vol_3, stable_vol_4 = st.columns(spec=4, gap="small")
@@ -266,6 +273,8 @@ with stable_vol_4:
     # style = frax_df.style.apply(lambda x: "${x:,.0f}".format)
     st.dataframe(frax_df.style.format(precision=0, formatter={'token_amount_x':"${:,.0f}"}))
 
+
+    
 trading_df=token_sent.copy()
 trading_df = trading_df[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path', 'token_amount_x']].sort_values('timestamp_x', ascending=True)
 trading_df['cumsum'] = trading_df.groupby(['symbol_x'])['token_amount_x'].cumsum()
