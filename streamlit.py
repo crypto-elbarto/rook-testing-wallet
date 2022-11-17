@@ -16,6 +16,10 @@ import time
 from pandas.io.json import json_normalize
 import json
 
+from datetime import date
+
+today = date.today()
+
 st.set_page_config(page_title = "Rook Stablecoin Testing Wallet", layout="wide")
 
 
@@ -168,6 +172,8 @@ for i in range(1,1000000):
         break
 
 rebate_comb['rewards'] = rebate_comb['userRookRebate'] * rebate_comb['rookPrice']
+time_between = date.today() - date(1981, 12, 2)
+time_between.days
 with roi_1:
     st.metric(label="Total USD Earned", value=f"{rebate_comb['rewards'].sum():.2f} $USD")
     
@@ -175,7 +181,7 @@ with roi_2:
     st.metric(label="ROI", value=f"{rebate_comb['rewards'].sum()/600000:.2f} %ROI")
     
 with roi_3:
-    st.metric(label="Effective API", value=f"{1:.2f} $ROOK")
+    st.metric(label="Effective API", value=f"{rebate_comb['rewards'].sum()/600000 * (365/time_between.day):.2f} % Effective ROI")
         
         
 #-----------------------------------------------------------------------------------#
