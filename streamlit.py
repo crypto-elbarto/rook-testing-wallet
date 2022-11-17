@@ -152,6 +152,9 @@ st.header("Current Balances")
 
 stablecol_1, stablecol_2, stablecol_3, stablecol_4 = st.columns(spec=4, gap="small")
 
+st.header("ROI")
+
+
 
 #-----------------------------------------------------------------------------------#
 #------------------Create Pie Charts for Showing Wallet Balances--------------------#
