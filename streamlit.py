@@ -169,13 +169,13 @@ for i in range(1,1000000):
 
 rebate_comb['rewards'] = rebate_comb['userRookRebate'] * rebate_comb['rookPrice']
 with roi_1:
-    st.metric(label="Total USD Earned", value=f"{rebate_comb['rewards'].sum():.2f} $ROOK")
+    st.metric(label="Total USD Earned", value=f"{rebate_comb['rewards'].sum():.2f} $USD")
     
 with roi_2:
-    st.metric(label="ROI", value=f"{1:.2f} $ROOK")
+    st.metric(label="ROI", value=f"{rebate_comb['rewards'].sum()/600000:.2f} %ROI")
     
 with roi_3:
-    st.metric(label="ROI", value=f"{1:.2f} $ROOK")
+    st.metric(label="Effective API", value=f"{1:.2f} $ROOK")
         
         
 #-----------------------------------------------------------------------------------#
