@@ -178,10 +178,10 @@ with roi_1:
     st.metric(label="Total USD Earned", value=f"{rebate_comb['rewards'].sum():.2f} $USD")
     
 with roi_2:
-    st.metric(label="ROI", value=f"{rebate_comb['rewards'].sum()/600000:.2f} %ROI")
+    st.metric(label="ROI", value=f"{rebate_comb['rewards'].sum()/600000*100:.2f} %ROI")
     
 with roi_3:
-    st.metric(label="Effective API", value=f"{rebate_comb['rewards'].sum()/600000 * (365/time_between.days):.2f} % Effective ROI")
+    st.metric(label="Effective API", value=f"{rebate_comb['rewards'].sum()/600000*100 * (365/time_between.days):.2f} % Effective ROI")
         
         
 #-----------------------------------------------------------------------------------#
