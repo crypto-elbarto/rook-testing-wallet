@@ -143,6 +143,9 @@ token_sent_sum=token_sent_sum[token_sent_sum['cumsum']>0].sort_values(['date', '
 st.title("Rook Multisig Testing Wallet")
 st.write("Learn More: [KIP-30](https://forum.rook.fi/t/kip-30-temporarily-empower-and-fund-a-strategy-testing-multisig/395)")
 
+st.header("ROI")
+
+roi_1,roi_2, roi_3 = st.columns(spec=3,gap="small")
 
 #-------------------------------------------------------------------------#
 # Show the amount of Rook that has been earned using columns
@@ -152,8 +155,17 @@ st.header("Current Balances")
 
 stablecol_1, stablecol_2, stablecol_3, stablecol_4 = st.columns(spec=4, gap="small")
 
-st.header("ROI")
-
+rebate_comb = pd.DataFrame(columns=['txHash','userRookRebate','rookPrice'])
+for i in range(1,1000000):
+    try:
+        rebate_url = "https://api.rook.finance/api/v1/trade/fills?makerAddresses=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE&page="+str(i)+"&size=100"
+        response = requests.get(rebate_url)
+        parsed = json.loads(response.content)
+        rebate_df = json_normalize(parsed['items'])
+        rebate_df = rebate_df[['txHash','userRookRebate','rookPrice']]
+        rebate_comb = rebate_comb.append(rebate_df)
+    except:
+        break
 
 
 #-----------------------------------------------------------------------------------#
@@ -279,18 +291,6 @@ with stable_vol_4:
 trading_df=token_sent.copy()
 trading_df = trading_df[['tx_hash', 'timestamp_x','symbol_x', 'symbol_y', 'path', 'token_amount_x']].sort_values('timestamp_x', ascending=True)
 trading_df['cumsum'] = trading_df.groupby(['symbol_x'])['token_amount_x'].cumsum()
-
-rebate_comb = pd.DataFrame(columns=['txHash','userRookRebate','rookPrice'])
-for i in range(1,1000000):
-    try:
-        rebate_url = "https://api.rook.finance/api/v1/trade/fills?makerAddresses=0x6d956A6Aaca9BB7A0e4D34b6924729F856c641dE&page="+str(i)+"&size=100"
-        response = requests.get(rebate_url)
-        parsed = json.loads(response.content)
-        rebate_df = json_normalize(parsed['items'])
-        rebate_df = rebate_df[['txHash','userRookRebate','rookPrice']]
-        rebate_comb = rebate_comb.append(rebate_df)
-    except:
-        break
 
 
 trading_df.rename(columns={'tx_hash':'Transaction Hash', 'timestamp_x':'Timestamp', 'path':'Trade Path', 'token_amount_x':'USD Value', 'cumsum':'Token Total'}, inplace=True)
