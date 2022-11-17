@@ -143,13 +143,13 @@ token_sent_sum=token_sent_sum[token_sent_sum['cumsum']>0].sort_values(['date', '
 st.title("Rook Multisig Testing Wallet")
 st.write("Learn More: [KIP-30](https://forum.rook.fi/t/kip-30-temporarily-empower-and-fund-a-strategy-testing-multisig/395)")
 
-st.header("ROI")
-
-roi_1,roi_2, roi_3 = st.columns(spec=3,gap="small")
-
 #-------------------------------------------------------------------------#
 # Show the amount of Rook that has been earned using columns
 rook_earned_col, rook_claimed_col, rook_claimable_col,cumulative_volume  = st.columns(spec=4, gap="small")
+
+st.header("ROI")
+
+roi_1,roi_2, roi_3 = st.columns(spec=3,gap="small")
 
 st.header("Current Balances")
 
@@ -167,7 +167,17 @@ for i in range(1,1000000):
     except:
         break
 
-
+rebate_comb['rewards'] = rebate_comb['userRookRebate'] * rebate_comb['rookPrice']
+with roi_1:
+    st.metric(label="Total USD Earned", value=f"{rebate_comb['rewards'].sum():.2f} $ROOK")
+    
+with roi_2:
+    st.metric(label="ROI", value=f"{1:.2f} $ROOK")
+    
+with roi_3:
+    st.metric(label="ROI", value=f"{1:.2f} $ROOK")
+        
+        
 #-----------------------------------------------------------------------------------#
 #------------------Create Pie Charts for Showing Wallet Balances--------------------#
 labels = ["USDC", "USDT", "DAI", "FRAX"]
